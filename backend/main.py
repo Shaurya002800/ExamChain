@@ -12,6 +12,7 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 ExamChain backend starting...")
     from utils.database import init_db
     from utils.redis_client import init_redis
+    import models.db_models  # ensure tables are registered
     await init_db()
     await init_redis()
     logger.info("✅ Database and Redis connected")
@@ -33,6 +34,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from routers import auth, exams, questions
+app.include_router(auth.router,      prefix="/api/auth",      tags=["Auth"])
+app.include_router(exams.router,     prefix="/api/exams",     tags=["Exams"])
+app.include_router(questions.router, prefix="/api/questions", tags=["Questions"])
 
 
 @app.get("/")
