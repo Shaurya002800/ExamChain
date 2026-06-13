@@ -1,227 +1,116 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/shared/Navbar";
 
-const BOOT_LINES = [
-  "> Initializing ExamChain v1.0.0...",
-  "> Connecting to Ganache blockchain [port 8545]",
-  "> QuestionVault contract: 0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab",
-  "> Shamir Secret Sharing: 3-of-5 threshold active",
-  "> Agent 1 [IntegrityMonitor]    — ONLINE",
-  "> Agent 2 [AdaptiveSelector]    — ONLINE",
-  "> Agent 3 [EnvironmentAuditor]  — ONLINE",
-  "> Agent 4 [ResultCertifier]     — ONLINE",
-  "> Zero-trust layer: ACTIVE",
-  "> System ready. Paper leak probability: 0.000%",
-];
-
-const STATS = [
-  { value: "2.27M",  label: "Students affected by NEET 2026 cancellation" },
-  { value: "3",      label: "Consecutive years of paper leaks" },
-  { value: "0",      label: "Humans who can decrypt the paper early" },
-  { value: "100%",   label: "Actions logged immutably on-chain" },
+const BOOT = [
+  { text: "> Initializing ExamChain v1.0.0...", color: "#94A3B8" },
+  { text: "> Blockchain connected [port 8545]", color: "#94A3B8" },
+  { text: "> QuestionVault: DEPLOYED", color: "#94A3B8" },
+  { text: "> Shamir 3-of-5 threshold: ACTIVE", color: "#94A3B8" },
+  { text: "> Agent 1 IntegrityMonitor ONLINE", color: "#10B981" },
+  { text: "> Agent 2 AdaptiveSelector ONLINE", color: "#10B981" },
+  { text: "> Agent 3 EnvironmentAuditor ONLINE", color: "#10B981" },
+  { text: "> Agent 4 ResultCertifier ONLINE", color: "#10B981" },
+  { text: "> Paper leak probability: 0.000%", color: "#F59E0B" },
+  { text: "> System ready.", color: "#0EA5E9" },
 ];
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [visibleLines, setVisibleLines] = useState([]);
-  const [bootDone, setBootDone] = useState(false);
-  const [chainBlocks, setChainBlocks] = useState([]);
+  const [lines, setLines] = useState([]);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < BOOT_LINES.length) {
-        setVisibleLines(prev => [...prev, BOOT_LINES[i]]);
-        i++;
-      } else {
-        clearInterval(interval);
-        setTimeout(() => setBootDone(true), 400);
-      }
-    }, 180);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (!bootDone) return;
-    const blocks = [
-      { label: "EXAM_CREATED",    hash: "0x8ed5996d...", color: "#0EA5E9" },
-      { label: "PAPER_LOCKED",    hash: "0x1c2d6bbf...", color: "#10B981" },
-      { label: "SESSION_STARTED", hash: "0x4b5c7e10...", color: "#0EA5E9" },
-      { label: "RESULT_CERTIFIED",hash: "0x647185b0...", color: "#10B981" },
-    ];
     let i = 0;
     const iv = setInterval(() => {
-      if (i < blocks.length) { setChainBlocks(prev => [...prev, blocks[i]]); i++; }
-      else clearInterval(iv);
-    }, 400);
+      if (i < BOOT.length) {
+        const item = BOOT[i];
+        setLines(p => [...p, item]);
+        i++;
+      } else {
+        clearInterval(iv);
+        setTimeout(() => setDone(true), 300);
+      }
+    }, 150);
     return () => clearInterval(iv);
-  }, [bootDone]);
+  }, []);
 
   return (
     <div style={{ minHeight: "100vh", background: "#0A0F1E", fontFamily: "Inter, sans-serif" }}>
       <Navbar />
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "3rem 2rem" }}>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "4rem 2rem" }}>
-
-        {/* Terminal Boot */}
-        <div style={{
-          background: "#0D1117",
-          border: "1px solid #1E293B",
-          borderRadius: 12,
-          padding: "1.5rem",
-          marginBottom: "3rem",
-          fontFamily: "JetBrains Mono, monospace",
-          fontSize: 13,
-          lineHeight: 1.8,
-        }}>
-          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-            {["#FF5F56","#FFBD2E","#27C93F"].map((c,i) => (
-              <div key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: c }} />
-            ))}
-            <span style={{ color: "#475569", fontSize: 11, marginLeft: 8 }}>examchain — system boot</span>
+        <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "3rem", fontFamily: "monospace", fontSize: 12.5, lineHeight: 1.9 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#FF5F56" }} />
+            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#FFBD2E" }} />
+            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#27C93F" }} />
+            <span style={{ color: "#334155", fontSize: 10.5, marginLeft: 6 }}>examchain — boot</span>
           </div>
-          {visibleLines.map((line, i) => (
-            <div key={i} style={{
-              color: line.includes("ONLINE") ? "#10B981" :
-                     line.includes("0.000%") ? "#F59E0B" : "#94A3B8",
-              animation: "fade-in 0.3s ease"
-            }}>{line}</div>
-          ))}
-          {!bootDone && (
-            <span style={{ color: "#0EA5E9", animation: "pulse 1s infinite" }}>█</span>
-          )}
+          {lines.map(function(l, i) { return <div key={i} style={{ color: l.color }}>{l.text}</div>; })}
+          {!done && <span style={{ color: "#0EA5E9" }}>█</span>}
         </div>
 
-        {/* Hero */}
-        {bootDone && (
-          <div style={{ animation: "fade-in 0.6s ease" }}>
-            <div style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: "clamp(2.2rem, 5vw, 3.8rem)",
-              fontWeight: 800,
-              lineHeight: 1.1,
-              letterSpacing: "-1.5px",
-              marginBottom: "1.5rem",
-              color: "#F1F5F9",
-            }}>
-              The paper doesn't exist<br />
+        {done && (
+          <div>
+            <div style={{ fontFamily: "sans-serif", fontSize: "clamp(2rem, 5vw, 3.6rem)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-1.5px", color: "#F1F5F9", marginBottom: "1.25rem" }}>
+              The paper does not exist<br />
               <span style={{ color: "#0EA5E9" }}>until the exam starts.</span>
             </div>
 
-            <p style={{
-              color: "#64748B", fontSize: 17, maxWidth: 560,
-              lineHeight: 1.7, marginBottom: "2.5rem"
-            }}>
-              ExamChain rebuilds the trust architecture of examinations.
-              Shamir's Secret Sharing. Autonomous AI agents. Immutable
-              blockchain audit trail. No single human can leak the paper.
+            <p style={{ color: "#64748B", fontSize: 16, maxWidth: 540, lineHeight: 1.75, marginBottom: "2rem" }}>
+              ExamChain rebuilds examination trust from scratch. Shamir Secret Sharing. Autonomous AI agents. Immutable blockchain audit trail. No single human can leak the paper.
             </p>
 
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: "4rem" }}>
-              <button onClick={() => navigate("/student")} style={btnPrimary}>
-                Enter as Student →
-              </button>
-              <button onClick={() => navigate("/examiner")} style={btnSecondary}>
-                Examiner Portal
-              </button>
-              <button onClick={() => navigate("/admin")} style={btnSecondary}>
-                Admin Dashboard
-              </button>
-              <button onClick={() => navigate("/verify")} style={{ ...btnSecondary, color: "#10B981", borderColor: "#10B981" }}>
-                Verify Credential ↗
-              </button>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: "3.5rem" }}>
+              <button onClick={function(){ navigate("/student"); }} style={{ padding: "11px 22px", borderRadius: 7, fontSize: 13.5, fontWeight: 600, cursor: "pointer", background: "#0EA5E9", color: "#fff", border: "none" }}>Enter as Student</button>
+              <button onClick={function(){ navigate("/examiner"); }} style={{ padding: "11px 22px", borderRadius: 7, fontSize: 13.5, fontWeight: 500, cursor: "pointer", background: "transparent", color: "#94A3B8", border: "1px solid #1E293B" }}>Examiner Portal</button>
+              <button onClick={function(){ navigate("/admin"); }} style={{ padding: "11px 22px", borderRadius: 7, fontSize: 13.5, fontWeight: 500, cursor: "pointer", background: "transparent", color: "#94A3B8", border: "1px solid #1E293B" }}>Admin Dashboard</button>
+              <button onClick={function(){ navigate("/verify"); }} style={{ padding: "11px 22px", borderRadius: 7, fontSize: 13.5, fontWeight: 500, cursor: "pointer", background: "transparent", color: "#10B981", border: "1px solid #10B981" }}>Verify Credential</button>
             </div>
 
-            {/* Stats */}
-            <div style={{
-              display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: 16, marginBottom: "4rem"
-            }}>
-              {STATS.map((s, i) => (
-                <div key={i} style={{
-                  background: "#0D1117",
-                  border: "1px solid #1E293B",
-                  borderLeft: "3px solid #0EA5E9",
-                  borderRadius: 8,
-                  padding: "1.2rem 1.4rem",
-                }}>
-                  <div style={{
-                    fontFamily: "'Space Grotesk', sans-serif",
-                    fontSize: "2rem", fontWeight: 800,
-                    color: i === 0 || i === 1 ? "#F59E0B" : "#10B981",
-                    letterSpacing: "-1px"
-                  }}>{s.value}</div>
-                  <div style={{ color: "#64748B", fontSize: 12, lineHeight: 1.5, marginTop: 4 }}>{s.label}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14, marginBottom: "3.5rem" }}>
+              <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderLeft: "3px solid #F59E0B", borderRadius: 8, padding: "1.1rem 1.3rem" }}>
+                <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#F59E0B" }}>2.27M</div>
+                <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>Students affected by NEET 2026</div>
+              </div>
+              <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderLeft: "3px solid #F59E0B", borderRadius: 8, padding: "1.1rem 1.3rem" }}>
+                <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#F59E0B" }}>3</div>
+                <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>Consecutive years of paper leaks</div>
+              </div>
+              <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderLeft: "3px solid #10B981", borderRadius: 8, padding: "1.1rem 1.3rem" }}>
+                <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#10B981" }}>0</div>
+                <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>Humans who can decrypt early</div>
+              </div>
+              <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderLeft: "3px solid #10B981", borderRadius: 8, padding: "1.1rem 1.3rem" }}>
+                <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#10B981" }}>100%</div>
+                <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>Actions logged on-chain</div>
+              </div>
+            </div>
+
+            <div style={{ borderTop: "1px solid #1E293B", paddingTop: "2.5rem" }}>
+              <div style={{ color: "#334155", fontSize: 10, fontFamily: "monospace", letterSpacing: 2, marginBottom: 20 }}>HOW THE ZERO-TRUST LAYER WORKS</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+                <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 8, padding: "1.3rem" }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 9.5, color: "#0EA5E9", marginBottom: 9, letterSpacing: 2 }}>STEP 01</div>
+                  <div style={{ fontWeight: 700, fontSize: 14.5, color: "#F1F5F9", marginBottom: 7 }}>Questions Encrypted</div>
+                  <div style={{ color: "#475569", fontSize: 12.5, lineHeight: 1.65 }}>AES-256 encryption. Key split via Shamir Secret Sharing. No single person holds the full key.</div>
                 </div>
-              ))}
-            </div>
-
-            {/* Live Chain */}
-            <div style={{ marginBottom: "4rem" }}>
-              <div style={{ color: "#475569", fontSize: 11, fontFamily: "monospace", marginBottom: 12, letterSpacing: 2 }}>
-                LIVE AUDIT CHAIN — IMMUTABLE ON-CHAIN EVENTS
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 0, flexWrap: "wrap" }}>
-                {chainBlocks.map((block, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center" }}>
-                    <div style={{
-                      background: "#0D1117",
-                      border: `1px solid ${block.color}`,
-                      borderRadius: 8,
-                      padding: "10px 14px",
-                      animation: "fade-in 0.4s ease",
-                      minWidth: 160,
-                    }}>
-                      <div style={{ color: block.color, fontSize: 10, fontFamily: "monospace", fontWeight: 700, marginBottom: 4 }}>
-                        {block.label}
-                      </div>
-                      <div style={{ color: "#475569", fontSize: 10, fontFamily: "monospace" }}>
-                        {block.hash}
-                      </div>
-                    </div>
-                    {i < chainBlocks.length - 1 && (
-                      <div style={{ width: 24, height: 1, background: "#1E293B", position: "relative" }}>
-                        <div style={{ position: "absolute", top: -3, right: 0, color: "#1E293B", fontSize: 8 }}>▶</div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {chainBlocks.length > 0 && chainBlocks.length < 4 && (
-                  <div style={{ width: 30, height: 1, background: "#1E293B", marginLeft: 0 }} />
-                )}
-              </div>
-            </div>
-
-            {/* How it works */}
-            <div style={{ borderTop: "1px solid #1E293B", paddingTop: "3rem" }}>
-              <div style={{ color: "#475569", fontSize: 11, fontFamily: "monospace", marginBottom: 24, letterSpacing: 2 }}>
-                HOW THE ZERO-TRUST LAYER WORKS
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-                {[
-                  { step: "01", title: "Questions Encrypted", desc: "AES-256 encryption. Key split via Shamir's Secret Sharing across 5 parties. 3-of-5 needed to decrypt.", color: "#0EA5E9" },
-                  { step: "02", title: "Smart Contract Lock", desc: "Timed release contract on Ganache. Paper mathematically impossible to read before exam start.", color: "#0EA5E9" },
-                  { step: "03", title: "4 AI Agents Active", desc: "Integrity Monitor, Adaptive Selector, Environment Auditor, Result Certifier — all autonomous.", color: "#10B981" },
-                  { step: "04", title: "Result On-Chain", desc: "W3C Verifiable Credential issued. QR code generated. Tamper-proof forever.", color: "#10B981" },
-                ].map((item, i) => (
-                  <div key={i} style={{
-                    background: "#0D1117",
-                    border: "1px solid #1E293B",
-                    borderRadius: 8,
-                    padding: "1.4rem",
-                  }}>
-                    <div style={{ fontFamily: "monospace", fontSize: 10, color: item.color, marginBottom: 10, letterSpacing: 2 }}>
-                      STEP {item.step}
-                    </div>
-                    <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: "#F1F5F9", marginBottom: 8 }}>
-                      {item.title}
-                    </div>
-                    <div style={{ color: "#64748B", fontSize: 13, lineHeight: 1.6 }}>
-                      {item.desc}
-                    </div>
-                  </div>
-                ))}
+                <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 8, padding: "1.3rem" }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 9.5, color: "#0EA5E9", marginBottom: 9, letterSpacing: 2 }}>STEP 02</div>
+                  <div style={{ fontWeight: 700, fontSize: 14.5, color: "#F1F5F9", marginBottom: 7 }}>Smart Contract Lock</div>
+                  <div style={{ color: "#475569", fontSize: 12.5, lineHeight: 1.65 }}>Timed release on Ganache. Paper is mathematically unreadable before exam start time.</div>
+                </div>
+                <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 8, padding: "1.3rem" }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 9.5, color: "#10B981", marginBottom: 9, letterSpacing: 2 }}>STEP 03</div>
+                  <div style={{ fontWeight: 700, fontSize: 14.5, color: "#F1F5F9", marginBottom: 7 }}>4 AI Agents Active</div>
+                  <div style={{ color: "#475569", fontSize: 12.5, lineHeight: 1.65 }}>Integrity Monitor, Adaptive Selector, Environment Auditor, Result Certifier — all autonomous.</div>
+                </div>
+                <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 8, padding: "1.3rem" }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 9.5, color: "#10B981", marginBottom: 9, letterSpacing: 2 }}>STEP 04</div>
+                  <div style={{ fontWeight: 700, fontSize: 14.5, color: "#F1F5F9", marginBottom: 7 }}>Result On-Chain</div>
+                  <div style={{ color: "#475569", fontSize: 12.5, lineHeight: 1.65 }}>W3C Verifiable Credential issued. QR code. Tamper-proof forever. No NTA dependency.</div>
+                </div>
               </div>
             </div>
           </div>
@@ -230,28 +119,3 @@ export default function Landing() {
     </div>
   );
 }
-
-const btnPrimary = {
-  background: "#0EA5E9",
-  color: "#fff",
-  border: "none",
-  padding: "12px 24px",
-  borderRadius: 8,
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: "pointer",
-  fontFamily: "Inter, sans-serif",
-  letterSpacing: "-0.2px",
-};
-
-const btnSecondary = {
-  background: "transparent",
-  color: "#94A3B8",
-  border: "1px solid #1E293B",
-  padding: "12px 24px",
-  borderRadius: 8,
-  fontSize: 14,
-  fontWeight: 500,
-  cursor: "pointer",
-  fontFamily: "Inter, sans-serif",
-};
