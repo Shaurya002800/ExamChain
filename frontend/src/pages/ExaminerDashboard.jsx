@@ -1,0 +1,1 @@
+export default function ExaminerDashboard() { return <div style={{background:"#0A0F1E",minHeight:"100vh",color:"#fff",padding:"2rem"}}>Examiner Dashboard</div>; }

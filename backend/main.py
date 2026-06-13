@@ -35,12 +35,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from routers import auth, exams, questions, sessions, results
-app.include_router(auth.router,      prefix="/api/auth",      tags=["Auth"])
-app.include_router(exams.router,     prefix="/api/exams",     tags=["Exams"])
-app.include_router(questions.router, prefix="/api/questions", tags=["Questions"])
-app.include_router(sessions.router,  prefix="/api/sessions",  tags=["Sessions"])
-app.include_router(results.router,   prefix="/api/results",   tags=["Results"])
+from routers import auth, exams, questions, sessions, results, agents, blockchain
+app.include_router(auth.router,        prefix="/api/auth",       tags=["Auth"])
+app.include_router(exams.router,       prefix="/api/exams",      tags=["Exams"])
+app.include_router(questions.router,   prefix="/api/questions",  tags=["Questions"])
+app.include_router(sessions.router,    prefix="/api/sessions",   tags=["Sessions"])
+app.include_router(results.router,     prefix="/api/results",    tags=["Results"])
+app.include_router(agents.router,      prefix="/api/agents",     tags=["Agents"])
+app.include_router(blockchain.router,  prefix="/api/blockchain", tags=["Blockchain"])
 
 
 @app.get("/")

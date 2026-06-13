@@ -1,0 +1,1 @@
+export default function Verify() { return <div style={{background:"#0A0F1E",minHeight:"100vh",color:"#fff",padding:"2rem"}}>Verify Credential</div>; }
