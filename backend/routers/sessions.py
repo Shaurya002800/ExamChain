@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, timezone
 import json
+from sqlalchemy import update
 
 from utils.database import get_db
 from utils.auth import get_current_user
@@ -168,6 +169,7 @@ async def submit_answer(
 
 # ── End Session ────────────────────────────────────────────────
 
+
 @router.post("/end")
 async def end_session(
     session_id: str,
@@ -183,14 +185,18 @@ async def end_session(
     if session.student_id != user["sub"]:
         raise HTTPException(status_code=403, detail="Not your session")
 
-    session.status   = "COMPLETED"
-    session.ended_at = datetime.now(timezone.utc)
+    from sqlalchemy import update
+    await db.execute(
+        update(ExamSession)
+        .where(ExamSession.id == session_id)
+        .values(status="COMPLETED", ended_at=datetime.utcnow())
+    )
     await db.commit()
 
     return {
-        "session_id":  session_id,
-        "status":      "COMPLETED",
-        "ended_at":    session.ended_at.isoformat(),
+        "session_id": session_id,
+        "status":     "COMPLETED",
+        "ended_at": datetime.utcnow().isoformat(),
         "total_answers": len(session.answers or [])
     }
 
