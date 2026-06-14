@@ -11,7 +11,7 @@ const BOOT = [
   { text: "> Agent 2 AdaptiveSelector ONLINE", color: "#10B981" },
   { text: "> Agent 3 EnvironmentAuditor ONLINE", color: "#10B981" },
   { text: "> Agent 4 ResultCertifier ONLINE", color: "#10B981" },
-  { text: "> Paper leak probability: 0.000%", color: "#F59E0B" },
+  { text: "> Demo threat model: paper leak window collapsed", color: "#F59E0B" },
   { text: "> System ready.", color: "#0EA5E9" },
 ];
 
@@ -59,11 +59,12 @@ export default function Landing() {
             </div>
 
             <p style={{ color: "#64748B", fontSize: 16, maxWidth: 540, lineHeight: 1.75, marginBottom: "2rem" }}>
-              ExamChain rebuilds examination trust from scratch. Shamir Secret Sharing. Autonomous AI agents. Immutable blockchain audit trail. No single human can leak the paper.
+              ExamChain rebuilds examination trust from scratch. Threshold key release. Autonomous AI agents. Immutable blockchain audit trail. No single actor can expose the paper early.
             </p>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: "3.5rem" }}>
-              <button onClick={function(){ navigate("/student"); }} style={{ padding: "11px 22px", borderRadius: 7, fontSize: 13.5, fontWeight: 600, cursor: "pointer", background: "#0EA5E9", color: "#fff", border: "none" }}>Enter as Student</button>
+              <button onClick={function(){ navigate("/exam/demo-neet-2026"); }} style={{ padding: "11px 22px", borderRadius: 7, fontSize: 13.5, fontWeight: 600, cursor: "pointer", background: "#0EA5E9", color: "#fff", border: "none" }}>Launch Live Demo</button>
+              <button onClick={function(){ navigate("/student"); }} style={{ padding: "11px 22px", borderRadius: 7, fontSize: 13.5, fontWeight: 500, cursor: "pointer", background: "transparent", color: "#94A3B8", border: "1px solid #1E293B" }}>Student Portal</button>
               <button onClick={function(){ navigate("/examiner"); }} style={{ padding: "11px 22px", borderRadius: 7, fontSize: 13.5, fontWeight: 500, cursor: "pointer", background: "transparent", color: "#94A3B8", border: "1px solid #1E293B" }}>Examiner Portal</button>
               <button onClick={function(){ navigate("/admin"); }} style={{ padding: "11px 22px", borderRadius: 7, fontSize: 13.5, fontWeight: 500, cursor: "pointer", background: "transparent", color: "#94A3B8", border: "1px solid #1E293B" }}>Admin Dashboard</button>
               <button onClick={function(){ navigate("/verify"); }} style={{ padding: "11px 22px", borderRadius: 7, fontSize: 13.5, fontWeight: 500, cursor: "pointer", background: "transparent", color: "#10B981", border: "1px solid #10B981" }}>Verify Credential</button>
@@ -71,12 +72,12 @@ export default function Landing() {
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14, marginBottom: "3.5rem" }}>
               <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderLeft: "3px solid #F59E0B", borderRadius: 8, padding: "1.1rem 1.3rem" }}>
-                <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#F59E0B" }}>2.27M</div>
-                <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>Students affected by NEET 2026</div>
+                <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#F59E0B" }}>Millions</div>
+                <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>Candidates depend on exam trust</div>
               </div>
               <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderLeft: "3px solid #F59E0B", borderRadius: 8, padding: "1.1rem 1.3rem" }}>
-                <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#F59E0B" }}>3</div>
-                <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>Consecutive years of paper leaks</div>
+                <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#F59E0B" }}>4</div>
+                <div style={{ color: "#475569", fontSize: 12, marginTop: 5 }}>Autonomous agents coordinate live</div>
               </div>
               <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderLeft: "3px solid #10B981", borderRadius: 8, padding: "1.1rem 1.3rem" }}>
                 <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#10B981" }}>0</div>
@@ -94,7 +95,7 @@ export default function Landing() {
                 <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 8, padding: "1.3rem" }}>
                   <div style={{ fontFamily: "monospace", fontSize: 9.5, color: "#0EA5E9", marginBottom: 9, letterSpacing: 2 }}>STEP 01</div>
                   <div style={{ fontWeight: 700, fontSize: 14.5, color: "#F1F5F9", marginBottom: 7 }}>Questions Encrypted</div>
-                  <div style={{ color: "#475569", fontSize: 12.5, lineHeight: 1.65 }}>AES-256 encryption. Key split via Shamir Secret Sharing. No single person holds the full key.</div>
+                  <div style={{ color: "#475569", fontSize: 12.5, lineHeight: 1.65 }}>AES-256 encryption with threshold release. No single operator holds a usable early paper.</div>
                 </div>
                 <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 8, padding: "1.3rem" }}>
                   <div style={{ fontFamily: "monospace", fontSize: 9.5, color: "#0EA5E9", marginBottom: 9, letterSpacing: 2 }}>STEP 02</div>

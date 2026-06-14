@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: examchain-postgres
+    environment:
+      POSTGRES_USER: examchain
+      POSTGRES_PASSWORD: examchain123
+      POSTGRES_DB: examchain_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - examchain_pg:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: examchain-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  examchain_pg:
