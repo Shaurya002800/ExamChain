@@ -2,9 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+from config import get_settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("examchain")
+settings = get_settings()
+cors_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
 
 
 @asynccontextmanager
@@ -29,7 +32,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
