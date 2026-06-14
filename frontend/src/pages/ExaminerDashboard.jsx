@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import Navbar from "../components/shared/Navbar";
+import IntegrityFeed from "../components/examiner/IntegrityFeed";
+import QuestionUploader from "../components/examiner/QuestionUploader";
 import useStore from "../store/useStore";
 import { registerExaminer, loginExaminer, createExam, uploadQuestions, lockExam, listExams } from "../services/api";
 import toast from "react-hot-toast";
@@ -211,35 +213,13 @@ export default function ExaminerDashboard() {
                 </select>
               </div>
             )}
-            {questions.map((q, i) => (
-              <div key={i} style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 10, padding: "1.25rem", marginBottom: 12 }}>
-                <div style={{ fontFamily: "monospace", fontSize: 10, color: "#F59E0B", marginBottom: 10 }}>Q{i+1}</div>
-                <input placeholder="Question text" value={q.text} onChange={e => updateQ(i, "text", e.target.value)} style={inp} />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {["a","b","c","d"].map(opt => (
-                    <input key={opt} placeholder={`Option ${opt.toUpperCase()}`} value={q["option_"+opt]} onChange={e => updateQ(i, "option_"+opt, e.target.value)} style={{...inp, marginBottom: 8}} />
-                  ))}
-                </div>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <div>
-                    <label style={lbl}>Correct Answer</label>
-                    <select value={q.correct} onChange={e => updateQ(i, "correct", e.target.value)} style={{...inp, width: "auto", marginBottom: 0}}>
-                      {["A","B","C","D"].map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={lbl}>Difficulty (0-1)</label>
-                    <input type="number" step="0.1" min="0" max="1" value={q.difficulty} onChange={e => updateQ(i, "difficulty", parseFloat(e.target.value))} style={{...inp, width: 80, marginBottom: 0}} />
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={addQuestion} style={{ padding: "10px 18px", borderRadius: 7, background: "transparent", border: "1px solid #1E293B", color: "#94A3B8", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>+ Add Question</button>
-              <button onClick={handleUploadQuestions} disabled={loading} style={{ padding: "10px 18px", borderRadius: 7, background: "#F59E0B", border: "none", color: "#0A0F1E", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
-                {loading ? "Encrypting..." : "Encrypt & Upload →"}
-              </button>
-            </div>
+            <QuestionUploader
+              questions={questions}
+              onQuestionChange={updateQ}
+              onAddQuestion={addQuestion}
+              onUpload={handleUploadQuestions}
+              loading={loading}
+            />
           </div>
         )}
 
@@ -266,6 +246,12 @@ export default function ExaminerDashboard() {
             <button onClick={handleLock} disabled={loading} style={{ width: "100%", padding: "13px", borderRadius: 8, border: "none", background: "#10B981", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
               {loading ? "Locking..." : "Lock Exam to Blockchain →"}
             </button>
+          </div>
+        )}
+
+        {tab === "dashboard" && exams.length > 0 && (
+          <div style={{ marginTop: "2rem" }}>
+            <IntegrityFeed />
           </div>
         )}
       </div>

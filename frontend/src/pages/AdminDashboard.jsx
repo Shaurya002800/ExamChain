@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import Navbar from "../components/shared/Navbar";
+import BlockchainExplorer from "../components/admin/BlockchainExplorer";
+import CheatRingGraph from "../components/admin/CheatRingGraph";
+import IntegrityHeatmap from "../components/admin/IntegrityHeatmap";
 import { blockchainStatus, recentTransactions } from "../services/api";
 import { DEMO_EXAM } from "../data/demo";
 
@@ -92,49 +95,7 @@ export default function AdminDashboard() {
 
         {/* Blockchain Explorer */}
         {tab === "blockchain" && (
-          <div>
-            {chain && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: "2rem" }}>
-                {[
-                  { label: "DEPLOYER", value: chain.deployer?.slice(0,18)+"...", color: "#0EA5E9" },
-                  { label: "LATEST BLOCK", value: "#" + chain.block_number, color: "#10B981" },
-                  { label: "NETWORK", value: "Ganache Local", color: "#F59E0B" },
-                  { label: "CHAIN ID", value: chain.network_id, color: "#10B981" },
-                ].map((item, i) => (
-                  <div key={i} style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 8, padding: "1rem 1.2rem" }}>
-                    <div style={{ fontFamily: "monospace", fontSize: 9.5, color: "#334155", letterSpacing: 2, marginBottom: 6 }}>{item.label}</div>
-                    <div style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 13, color: item.color }}>{item.value}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", letterSpacing: 2, marginBottom: 12 }}>RECENT TRANSACTIONS</div>
-            {loading ? (
-              <div style={{ color: "#475569", fontFamily: "monospace", fontSize: 13 }}>Loading chain data...</div>
-            ) : txns.length === 0 ? (
-              <div style={{ color: "#475569", fontFamily: "monospace", fontSize: 13 }}>No transactions yet. Lock an exam first.</div>
-            ) : (
-              <div style={{ display: "grid", gap: 8 }}>
-                {txns.map((tx, i) => (
-                  <div key={i} style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 8, padding: "1rem 1.25rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <div style={{ fontFamily: "monospace", fontSize: 11, color: "#0EA5E9" }}>{tx.tx_hash?.slice(0,24)}...</div>
-                      <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155" }}>Block #{tx.block}</div>
-                    </div>
-                    <div style={{ display: "flex", gap: 16 }}>
-                      <div style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }}>
-                        FROM: <span style={{ color: "#64748B" }}>{tx.from?.slice(0,14)}...</span>
-                      </div>
-                      <div style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }}>
-                        GAS: <span style={{ color: "#64748B" }}>{tx.gas_used?.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <BlockchainExplorer chain={chain} transactions={txns} loading={loading} />
         )}
 
         {/* Agent Feed */}
@@ -199,6 +160,11 @@ export default function AdminDashboard() {
                   <div style={{ fontSize: "1.8rem", fontWeight: 800, color: s.color }}>{s.value}</div>
                 </div>
               ))}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginBottom: "1.5rem" }}>
+              <IntegrityHeatmap />
+              <CheatRingGraph flags={MOCK_FLAGS} />
             </div>
 
             <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", letterSpacing: 2, marginBottom: 12 }}>FLAGGED SESSIONS</div>
