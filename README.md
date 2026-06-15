@@ -93,3 +93,10 @@ Open `http://localhost:5173`.
 ## Why It Can Win
 
 ExamChain is not a generic quiz app. It attacks the full examination trust chain: paper creation, timed release, live proctoring, adaptive exam flow, tamper-proof scoring, and portable result proof.
+
+## Beyond The Hackathon
+
+The production vision and business plan are documented here:
+
+- [Production Roadmap](docs/production-roadmap.md)
+- [Business Model](docs/business-model.md)

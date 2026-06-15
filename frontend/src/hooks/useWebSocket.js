@@ -7,11 +7,11 @@ export default function useWebSocket(url, { enabled = true, onMessage } = {}) {
 
   useEffect(() => {
     if (!enabled || !url) {
-      setState("idle");
+      window.setTimeout(() => setState("idle"), 0);
       return undefined;
     }
 
-    setState("connecting");
+    window.setTimeout(() => setState("connecting"), 0);
     const socket = new WebSocket(url);
     socketRef.current = socket;
 
