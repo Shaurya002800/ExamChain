@@ -100,3 +100,4 @@ The production vision and business plan are documented here:
 
 - [Production Roadmap](docs/production-roadmap.md)
 - [Business Model](docs/business-model.md)
+- [Real Product Flow](docs/real-product-flow.md)

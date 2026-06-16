@@ -36,6 +36,21 @@ class BehaviorEventRequest(BaseModel):
     events:     list           # Raw browser behavior events
 
 
+def _question_response(question: Question, index: int, total: int) -> dict:
+    payload = question.public_payload or {}
+    return {
+        "id": question.id,
+        "text": payload.get("text", "Question payload unavailable"),
+        "options": payload.get("options", {}),
+        "difficulty": question.difficulty,
+        "subject_area": question.subject_area,
+        "hash": question.question_hash,
+        "points": question.points,
+        "index": index,
+        "total": total,
+    }
+
+
 # ── Start Session ──────────────────────────────────────────────
 
 @router.post("/start")
@@ -93,6 +108,8 @@ async def start_session(
         for q in questions
     ])
     question_order = selector.select_initial_set(n=min(len(questions), 10))
+    if not question_order:
+      question_order = [q.id for q in questions]
 
     # Create session
     session = ExamSession(
@@ -120,6 +137,49 @@ async def start_session(
     }
 
 
+@router.get("/{session_id}/questions")
+async def get_session_questions(
+    session_id: str,
+    db:         AsyncSession = Depends(get_db),
+    user:       dict         = Depends(get_current_user)
+):
+    result = await db.execute(select(ExamSession).where(ExamSession.id == session_id))
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if user.get("role") == "student" and session.student_id != user["sub"]:
+        raise HTTPException(status_code=403, detail="Not your session")
+
+    e_result = await db.execute(select(Exam).where(Exam.id == session.exam_id))
+    exam = e_result.scalar_one_or_none()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    q_result = await db.execute(select(Question).where(Question.exam_id == session.exam_id))
+    questions = {q.id: q for q in q_result.scalars().all()}
+    order = session.question_order or list(questions.keys())
+    ordered = [questions[qid] for qid in order if qid in questions]
+
+    return {
+        "session_id": session.id,
+        "exam": {
+            "exam_id": exam.id,
+            "title": exam.title,
+            "subject": exam.subject,
+            "duration_mins": exam.duration_mins,
+            "total_marks": exam.total_marks,
+            "merkle_root": exam.merkle_root,
+            "vault_tx_hash": exam.vault_tx_hash,
+            "ledger_mode": exam.ledger_mode,
+        },
+        "questions": [
+            _question_response(question, index + 1, len(ordered))
+            for index, question in enumerate(ordered)
+        ],
+        "answers": session.answers or [],
+    }
+
+
 # ── Submit Answer ──────────────────────────────────────────────
 
 @router.post("/answer")
@@ -139,8 +199,8 @@ async def submit_answer(
     if session.status != "ACTIVE":
         raise HTTPException(status_code=400, detail="Session is not active")
 
-    # Add answer
     answers = session.answers or []
+    answers = [a for a in answers if a.get("q_id") != data.question_id]
     answer_entry = {
         "q_id":          data.question_id,
         "answer":        data.answer,
@@ -150,6 +210,21 @@ async def submit_answer(
     }
     answers.append(answer_entry)
     session.answers = answers
+
+    # Simple real-time integrity signal for answer changes and very fast answers.
+    if data.changed or data.time_spent_ms < 1200:
+        event = AgentEvent(
+            session_id=session.id,
+            agent_name="INTEGRITY_MONITOR",
+            event_type="ANSWER_PATTERN",
+            severity="WARNING" if data.changed else "INFO",
+            payload={
+                "question_id": data.question_id,
+                "changed": data.changed,
+                "time_spent_ms": data.time_spent_ms,
+            },
+        )
+        db.add(event)
 
     # Feed to integrity monitor
     redis = get_redis()

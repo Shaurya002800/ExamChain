@@ -87,7 +87,7 @@ async def list_exams(
         )
     else:
         result = await db.execute(
-            select(Exam).where(Exam.status == "ACTIVE")
+            select(Exam).where(Exam.status.in_(["LOCKED", "ACTIVE"]))
         )
     exams = result.scalars().all()
     return [
@@ -99,7 +99,11 @@ async def list_exams(
             "start_time":   e.start_time.isoformat(),
             "end_time":     e.end_time.isoformat(),
             "total_marks":  e.total_marks,
+            "duration_mins":e.duration_mins,
             "is_released":  e.is_released,
+            "merkle_root":  e.merkle_root,
+            "vault_tx_hash":e.vault_tx_hash,
+            "ledger_mode":  e.ledger_mode,
         }
         for e in exams
     ]
@@ -187,7 +191,10 @@ async def lock_exam_to_blockchain(
         # Update exam in DB
         exam.merkle_root   = merkle_root
         exam.vault_tx_hash = receipt.transactionHash.hex()
+        exam.ledger_mode   = "BLOCKCHAIN"
+        exam.ledger_error  = None
         exam.status        = "LOCKED"
+        exam.is_released   = True
         await db.commit()
 
         return {
@@ -198,4 +205,22 @@ async def lock_exam_to_blockchain(
             "message":     f"Exam locked to blockchain with {len(questions)} questions"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Blockchain error: {str(e)}")
+        local_tx = "0x" + hashlib.sha256(
+            f"{exam.id}:{merkle_root}:{len(questions)}:{datetime.utcnow().isoformat()}".encode()
+        ).hexdigest()
+        exam.merkle_root   = merkle_root
+        exam.vault_tx_hash = local_tx
+        exam.ledger_mode   = "LOCAL_LEDGER"
+        exam.ledger_error  = str(e)
+        exam.status        = "LOCKED"
+        exam.is_released   = True
+        await db.commit()
+
+        return {
+            "success":     True,
+            "merkle_root": merkle_root,
+            "tx_hash":     local_tx,
+            "status":      "LOCKED",
+            "ledger_mode": "LOCAL_LEDGER",
+            "message":     f"Exam locked with local tamper-evident ledger fallback. Blockchain unavailable: {str(e)}"
+        }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/shared/Navbar";
 import AgentEventFeed from "../components/shared/AgentEventFeed";
@@ -6,7 +6,7 @@ import BehaviorTracker from "../components/student/BehaviorTracker";
 import QuestionCard from "../components/student/QuestionCard";
 import useStore from "../store/useStore";
 import { DEMO_AGENT_EVENTS, DEMO_EXAM, DEMO_EXAM_ID, DEMO_QUESTIONS, DEMO_RESULT } from "../data/demo";
-import { recordBrowserEvent } from "../services/api";
+import { certifyLiveResult, endSession, getSessionQuestions, recordBrowserEvent, startSession, submitAnswer } from "../services/api";
 import toast from "react-hot-toast";
 
 export default function ExamRoom() {
@@ -18,19 +18,62 @@ export default function ExamRoom() {
   const [risk, setRisk] = useState(8);
   const [events, setEvents] = useState(DEMO_AGENT_EVENTS);
   const [locked, setLocked] = useState(true);
-  const exam = id === DEMO_EXAM_ID || !id ? DEMO_EXAM : { ...DEMO_EXAM, exam_id: id };
-  const current = DEMO_QUESTIONS[index];
+  const [realExam, setRealExam] = useState(null);
+  const [realQuestions, setRealQuestions] = useState([]);
+  const [sessionId, setSessionId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const isDemo = id === DEMO_EXAM_ID || !id;
+  const questions = isDemo ? DEMO_QUESTIONS : realQuestions;
+  const exam = isDemo ? DEMO_EXAM : realExam || { ...DEMO_EXAM, exam_id: id, title: "Loading secure exam..." };
+  const current = questions[index];
+
+  useEffect(() => {
+    if (isDemo) return;
+    let alive = true;
+    async function bootRealExam() {
+      setLoading(true);
+      try {
+        const session = await startSession({ exam_id: id });
+        const details = await getSessionQuestions(session.data.session_id);
+        if (!alive) return;
+        setSessionId(session.data.session_id);
+        setRealExam(details.data.exam);
+        setRealQuestions(details.data.questions);
+      } catch (error) {
+        toast.error(error.response?.data?.detail || "Unable to start secure exam. Sign in as a student first.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+    bootRealExam();
+    return () => { alive = false; };
+  }, [id, isDemo]);
 
   const score = useMemo(() => {
     return DEMO_QUESTIONS.reduce((sum, q) => sum + (answers[q.id] === q.correct ? 1 : 0), 0);
   }, [answers]);
 
-  const choose = (option) => {
+  const choose = async (option) => {
+    if (!current) return;
+    const changed = Boolean(answers[current.id] && answers[current.id] !== option);
     setAnswers((prev) => ({ ...prev, [current.id]: option }));
     setEvents((prev) => [
       { time: `0${index + 1}:${18 + index * 7}`, agent: "IntegrityMonitor", message: `Answer committed for ${current.id}; cadence score normal.`, severity: "INFO" },
       ...prev,
     ].slice(0, 7));
+    if (!isDemo && sessionId) {
+      try {
+        await submitAnswer({
+          session_id: sessionId,
+          question_id: current.id,
+          answer: option,
+          time_spent_ms: 6000 + index * 1200,
+          changed,
+        });
+      } catch (error) {
+        toast.error(error.response?.data?.detail || "Answer sync failed");
+      }
+    }
   };
 
   const injectEvent = async () => {
@@ -41,13 +84,26 @@ export default function ExamRoom() {
       ...prev,
     ].slice(0, 7));
     try {
-      await recordBrowserEvent({ session_id: "demo-session", event_type: "focus_lost", detail: { source: "demo" } });
+      await recordBrowserEvent({ session_id: sessionId || "demo-session", event_type: "focus_lost", detail: { source: isDemo ? "demo" : "live" } });
     } catch {
       // Demo mode still records the event locally when the API is unavailable.
     }
   };
 
-  const submit = () => {
+  const submit = async () => {
+    if (!isDemo && sessionId) {
+      try {
+        await endSession(sessionId);
+        const certified = await certifyLiveResult({ session_id: sessionId });
+        setResult(certified.data);
+        toast.success("Result certified and credential issued");
+        navigate("/results");
+        return;
+      } catch (error) {
+        toast.error(error.response?.data?.detail || "Certification failed");
+        return;
+      }
+    }
     const percentage = Math.round((score / DEMO_QUESTIONS.length) * 100);
     const result = {
       ...DEMO_RESULT,
@@ -64,11 +120,16 @@ export default function ExamRoom() {
     <div style={{ minHeight: "100vh", background: "#0A0F1E", fontFamily: "Inter, sans-serif" }}>
       <Navbar />
       <main style={{ maxWidth: 1180, margin: "0 auto", padding: "1.6rem 1.5rem 2.5rem" }}>
+        {loading && (
+          <div style={{ color: "#64748B", fontFamily: "monospace", marginBottom: 16 }}>
+            Establishing encrypted session...
+          </div>
+        )}
         <div style={topbar}>
           <div>
             <div style={eyebrow}>ZERO-TRUST EXAM ROOM</div>
             <h1 style={title}>{exam.title}</h1>
-            <div style={{ color: "#64748B", fontSize: 13 }}>{exam.subject} / Question {index + 1} of {DEMO_QUESTIONS.length}</div>
+            <div style={{ color: "#64748B", fontSize: 13 }}>{exam.subject} / Question {questions.length ? index + 1 : 0} of {questions.length}</div>
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Metric label="Time Left" value="09:42" color="#0EA5E9" />
@@ -78,17 +139,23 @@ export default function ExamRoom() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 18 }}>
-          <QuestionCard
-            question={current}
-            answer={answers[current.id]}
-            questionNumber={index + 1}
-            totalQuestions={DEMO_QUESTIONS.length}
-            onAnswer={choose}
-            onPrevious={() => setIndex((v) => Math.max(0, v - 1))}
-            onNext={() => setIndex((v) => Math.min(DEMO_QUESTIONS.length - 1, v + 1))}
-            onSubmit={submit}
-            onInjectEvent={injectEvent}
-          />
+          {current ? (
+            <QuestionCard
+              question={current}
+              answer={answers[current.id]}
+              questionNumber={index + 1}
+              totalQuestions={questions.length}
+              onAnswer={choose}
+              onPrevious={() => setIndex((v) => Math.max(0, v - 1))}
+              onNext={() => setIndex((v) => Math.min(questions.length - 1, v + 1))}
+              onSubmit={submit}
+              onInjectEvent={injectEvent}
+            />
+          ) : (
+            <section style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 8, padding: "1.25rem", color: "#94A3B8" }}>
+              No released questions found for this exam yet.
+            </section>
+          )}
 
           <aside style={{ display: "grid", gap: 14 }}>
             <BehaviorTracker risk={risk} locked={locked} onLockedChange={setLocked} />

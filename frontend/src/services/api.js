@@ -30,12 +30,14 @@ export const listQuestions   = (examId) => api.get(`/api/questions/${examId}/lis
 
 // Sessions
 export const startSession  = (d)  => api.post("/api/sessions/start",  d);
+export const getSessionQuestions = (id) => api.get(`/api/sessions/${id}/questions`);
 export const submitAnswer  = (d)  => api.post("/api/sessions/answer", d);
 export const endSession    = (id) => api.post(`/api/sessions/end?session_id=${id}`);
 export const getSession    = (id) => api.get(`/api/sessions/${id}`);
 
 // Results
 export const certifyResult    = (d)  => api.post("/api/results/certify",          d);
+export const certifyLiveResult= (d)  => api.post("/api/results/certify-live",     d);
 export const getStudentResults= (id) => api.get(`/api/results/student/${id}`);
 export const verifyCredential = (params) => api.get("/api/results/verify", { params });
 

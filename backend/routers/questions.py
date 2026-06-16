@@ -7,7 +7,7 @@ import hashlib, json
 
 from utils.database import get_db
 from utils.auth import get_current_user
-from utils.crypto import encrypt_question, generate_aes_key, build_merkle_tree, get_merkle_proof
+from utils.crypto import encrypt_question, generate_aes_key, get_merkle_proof
 from models.db_models import Question, Exam
 
 router = APIRouter()
@@ -24,6 +24,7 @@ class QuestionData(BaseModel):
     correct:     str          # "A", "B", "C", or "D"
     difficulty:  float = 0.5  # 0=easy, 1=hard
     subject_area: Optional[str] = ""
+    points: float = 1.0
 
 class BulkUploadRequest(BaseModel):
     exam_id:    str
@@ -58,13 +59,26 @@ async def upload_questions(
 
     uploaded = []
     for q in data.questions:
+        correct = q.correct.strip().upper()
+        if correct not in {"A", "B", "C", "D"}:
+            raise HTTPException(status_code=400, detail="Correct answer must be A, B, C, or D")
+
         plaintext = {
             "text":     q.text,
             "option_a": q.option_a,
             "option_b": q.option_b,
             "option_c": q.option_c,
             "option_d": q.option_d,
-            "correct":  q.correct,
+            "correct":  correct,
+        }
+        public_payload = {
+            "text": q.text,
+            "options": {
+                "A": q.option_a,
+                "B": q.option_b,
+                "C": q.option_c,
+                "D": q.option_d,
+            },
         }
         # Encrypt question
         encrypted = encrypt_question(plaintext, aes_key)
@@ -74,19 +88,23 @@ async def upload_questions(
         q_hash = "0x" + hashlib.sha256(
             json.dumps(plaintext, sort_keys=True).encode()
         ).hexdigest()
+        correct_hash = "0x" + hashlib.sha256(f"{q_hash}:{correct}".encode()).hexdigest()
 
         question = Question(
             exam_id        = data.exam_id,
             encrypted_data = encrypted_str,
+            public_payload = public_payload,
             question_hash  = q_hash,
+            correct_answer_hash = correct_hash,
             merkle_leaf    = q_hash,
+            points         = q.points,
             difficulty     = q.difficulty,
             discrimination = 1.0,
             guessing       = 0.25,
             subject_area   = q.subject_area or ""
         )
         db.add(question)
-        uploaded.append({"question_hash": q_hash})
+        uploaded.append({"question_hash": q_hash, "correct_answer_hash": correct_hash})
 
     await db.commit()
 
@@ -117,6 +135,7 @@ async def list_questions(
             "difficulty":   q.difficulty,
             "subject_area": q.subject_area,
             "question_hash":q.question_hash,
+            "points":       q.points,
         }
         for q in questions
     ]
