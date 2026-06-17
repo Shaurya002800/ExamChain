@@ -6,7 +6,7 @@ import BehaviorTracker from "../components/student/BehaviorTracker";
 import QuestionCard from "../components/student/QuestionCard";
 import useStore from "../store/useStore";
 import { DEMO_AGENT_EVENTS, DEMO_EXAM, DEMO_EXAM_ID, DEMO_QUESTIONS, DEMO_RESULT } from "../data/demo";
-import { certifyLiveResult, endSession, getSessionQuestions, recordBrowserEvent, startSession, submitAnswer } from "../services/api";
+import { endSession, getSessionQuestions, recordBrowserEvent, startSession, submitAnswer } from "../services/api";
 import toast from "react-hot-toast";
 
 export default function ExamRoom() {
@@ -94,13 +94,23 @@ export default function ExamRoom() {
     if (!isDemo && sessionId) {
       try {
         await endSession(sessionId);
-        const certified = await certifyLiveResult({ session_id: sessionId });
-        setResult(certified.data);
-        toast.success("Result certified and credential issued");
+        setResult({
+          session_id: sessionId,
+          exam_id: exam.exam_id,
+          exam_title: exam.title,
+          student_name: "Signed-in student",
+          total_marks: exam.total_marks,
+          score: "Pending",
+          percentage: "Pending",
+          is_flagged: risk >= 50,
+          status: "PENDING",
+          message: "Your submission is complete and waiting for examiner review.",
+        });
+        toast.success("Submission completed. Result is pending examiner review.");
         navigate("/results");
         return;
       } catch (error) {
-        toast.error(error.response?.data?.detail || "Certification failed");
+        toast.error(error.response?.data?.detail || "Submission failed");
         return;
       }
     }

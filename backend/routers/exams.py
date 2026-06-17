@@ -52,6 +52,7 @@ async def create_exam(
 
     exam = Exam(
         id            = exam_id,
+        tenant_id     = examiner.tenant_id or user.get("tenant_id", "default"),
         title         = data.title,
         subject       = data.subject,
         creator_id    = user["sub"],
@@ -83,11 +84,17 @@ async def list_exams(
 ):
     if user.get("role") == "examiner":
         result = await db.execute(
-            select(Exam).where(Exam.creator_id == user["sub"])
+            select(Exam).where(
+                Exam.creator_id == user["sub"],
+                Exam.tenant_id == user.get("tenant_id", "default")
+            )
         )
     else:
         result = await db.execute(
-            select(Exam).where(Exam.status.in_(["LOCKED", "ACTIVE"]))
+            select(Exam).where(
+                Exam.status.in_(["LOCKED", "ACTIVE"]),
+                Exam.tenant_id == user.get("tenant_id", "default")
+            )
         )
     exams = result.scalars().all()
     return [
@@ -104,6 +111,7 @@ async def list_exams(
             "merkle_root":  e.merkle_root,
             "vault_tx_hash":e.vault_tx_hash,
             "ledger_mode":  e.ledger_mode,
+            "tenant_id":    e.tenant_id,
         }
         for e in exams
     ]
@@ -119,6 +127,10 @@ async def get_exam(
     exam = result.scalar_one_or_none()
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
+    if user.get("role") == "student" and exam.tenant_id != user.get("tenant_id", "default"):
+        raise HTTPException(status_code=403, detail="Exam belongs to a different tenant")
+    if user.get("role") == "examiner" and exam.creator_id != user["sub"]:
+        raise HTTPException(status_code=403, detail="Not your exam")
     return {
         "exam_id":      exam.id,
         "title":        exam.title,
@@ -131,6 +143,8 @@ async def get_exam(
         "merkle_root":  exam.merkle_root,
         "is_released":  exam.is_released,
         "vault_tx_hash":exam.vault_tx_hash,
+        "ledger_mode":  exam.ledger_mode,
+        "tenant_id":    exam.tenant_id,
     }
 
 

@@ -37,7 +37,8 @@ export const getSession    = (id) => api.get(`/api/sessions/${id}`);
 
 // Results
 export const certifyResult    = (d)  => api.post("/api/results/certify",          d);
-export const certifyLiveResult= (d)  => api.post("/api/results/certify-live",     d);
+export const getPendingResults= (examId) => api.get(`/api/results/pending/${examId}`);
+export const reviewResult     = (sessionId, d) => api.post(`/api/results/review/${sessionId}`, d);
 export const getStudentResults= (id) => api.get(`/api/results/student/${id}`);
 export const verifyCredential = (params) => api.get("/api/results/verify", { params });
 

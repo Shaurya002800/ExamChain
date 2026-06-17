@@ -10,7 +10,7 @@ from sqlalchemy import update
 from utils.database import get_db
 from utils.auth import get_current_user
 from utils.redis_client import get_redis
-from models.db_models import ExamSession, Exam, Student, Question, AgentEvent
+from models.db_models import ExamSession, Exam, Student, Question, AgentEvent, Result
 
 router = APIRouter()
 
@@ -67,6 +67,8 @@ async def start_session(
     exam = result.scalar_one_or_none()
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
+    if exam.tenant_id != user.get("tenant_id", "default"):
+        raise HTTPException(status_code=403, detail="Exam belongs to a different tenant")
     if exam.status not in ("LOCKED", "ACTIVE"):
         raise HTTPException(status_code=400, detail="Exam is not available yet")
 
@@ -75,6 +77,8 @@ async def start_session(
     student = result.scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+    if student.tenant_id != exam.tenant_id:
+        raise HTTPException(status_code=403, detail="Student is not assigned to this exam tenant")
 
     # Check no existing active session
     result = await db.execute(
@@ -109,7 +113,7 @@ async def start_session(
     ])
     question_order = selector.select_initial_set(n=min(len(questions), 10))
     if not question_order:
-      question_order = [q.id for q in questions]
+        question_order = [q.id for q in questions]
 
     # Create session
     session = ExamSession(
@@ -154,6 +158,8 @@ async def get_session_questions(
     exam = e_result.scalar_one_or_none()
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
+    if exam.tenant_id != user.get("tenant_id", "default"):
+        raise HTTPException(status_code=403, detail="Exam belongs to a different tenant")
 
     q_result = await db.execute(select(Question).where(Question.exam_id == session.exam_id))
     questions = {q.id: q for q in q_result.scalars().all()}
@@ -266,6 +272,24 @@ async def end_session(
         .where(ExamSession.id == session_id)
         .values(status="COMPLETED", ended_at=datetime.utcnow())
     )
+    existing_result = await db.execute(
+        select(Result).where(Result.student_id == session.student_id, Result.exam_id == session.exam_id)
+    )
+    db_result = existing_result.scalar_one_or_none()
+    if not db_result:
+        exam_result = await db.execute(select(Exam).where(Exam.id == session.exam_id))
+        exam = exam_result.scalar_one_or_none()
+        db_result = Result(
+            student_id=session.student_id,
+            exam_id=session.exam_id,
+            total_marks=exam.total_marks if exam else None,
+            is_flagged=session.is_flagged,
+            status="PENDING",
+        )
+        db.add(db_result)
+    else:
+        db_result.status = "PENDING" if db_result.status != "CERTIFIED" else db_result.status
+        db_result.is_flagged = session.is_flagged
     await db.commit()
 
     return {

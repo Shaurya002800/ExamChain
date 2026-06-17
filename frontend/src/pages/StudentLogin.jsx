@@ -28,11 +28,17 @@ export default function StudentLogin() {
     try {
       const fn = mode === "login" ? loginStudent : registerStudent;
       const res = await fn(form);
-      setAuth({ name: form.name || res.data.name || "Student", email: form.email, did: res.data.did }, res.data.access_token, "student");
+      setAuth({
+        name: form.name || res.data.name || "Student",
+        email: form.email,
+        did: res.data.did,
+        student_id: res.data.student_id,
+        tenant_id: res.data.tenant_id,
+      }, res.data.access_token, "student");
       toast.success(mode === "login" ? "Welcome back!" : "Account created");
     } catch (e) {
       toast.error(e.response?.data?.detail || "Backend unavailable. Opening demo student mode.");
-      setAuth({ name: form.name || "Demo Candidate", email: form.email || "demo@examchain.local", did: "did:examchain:demo" }, "demo-token", "student");
+      setAuth({ name: form.name || "Demo Candidate", email: form.email || "demo@examchain.local", did: "did:examchain:demo", student_id: "demo-student" }, "demo-token", "student");
     }
     setLoading(false);
   };
@@ -130,7 +136,7 @@ export default function StudentLogin() {
             {loading ? "Please wait..." : mode === "login" ? "Sign in" : "Create account"}
           </button>
 
-          <button onClick={() => setAuth({ name: "Demo Candidate", did: "did:examchain:demo" }, "demo-token", "student")} style={{ ...ghostBtn, width: "100%", justifyContent: "center", marginTop: 10 }}>
+          <button onClick={() => setAuth({ name: "Demo Candidate", did: "did:examchain:demo", student_id: "demo-student" }, "demo-token", "student")} style={{ ...ghostBtn, width: "100%", justifyContent: "center", marginTop: 10 }}>
             Open demo mode
           </button>
         </div>

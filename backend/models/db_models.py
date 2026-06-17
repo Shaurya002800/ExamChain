@@ -9,10 +9,26 @@ def gen_uuid():
     return str(uuid.uuid4())
 
 
+class Tenant(Base):
+    __tablename__ = "tenants"
+
+    id            = Column(String, primary_key=True, default=gen_uuid)
+    name          = Column(String(200), nullable=False)
+    slug          = Column(String(120), unique=True, nullable=False)
+    logo_url      = Column(Text)
+    primary_color = Column(String(20), default="#0EA5E9")
+    created_at    = Column(DateTime, server_default=func.now())
+
+    students  = relationship("Student", back_populates="tenant")
+    examiners = relationship("Examiner", back_populates="tenant")
+    exams     = relationship("Exam", back_populates="tenant")
+
+
 class Student(Base):
     __tablename__ = "students"
 
     id                = Column(String, primary_key=True, default=gen_uuid)
+    tenant_id         = Column(String, ForeignKey("tenants.id"), default="default")
     name              = Column(String(120), nullable=False)
     email             = Column(String(200), unique=True, nullable=False)
     password_hash     = Column(String, nullable=False)
@@ -23,12 +39,14 @@ class Student(Base):
 
     sessions = relationship("ExamSession", back_populates="student")
     results  = relationship("Result", back_populates="student")
+    tenant   = relationship("Tenant", back_populates="students")
 
 
 class Examiner(Base):
     __tablename__ = "examiners"
 
     id            = Column(String, primary_key=True, default=gen_uuid)
+    tenant_id     = Column(String, ForeignKey("tenants.id"), default="default")
     name          = Column(String(120), nullable=False)
     email         = Column(String(200), unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
@@ -36,12 +54,14 @@ class Examiner(Base):
     created_at    = Column(DateTime, server_default=func.now())
 
     exams = relationship("Exam", back_populates="creator")
+    tenant = relationship("Tenant", back_populates="examiners")
 
 
 class Exam(Base):
     __tablename__ = "exams"
 
     id             = Column(String, primary_key=True, default=gen_uuid)
+    tenant_id      = Column(String, ForeignKey("tenants.id"), default="default")
     title          = Column(String(200), nullable=False)
     subject        = Column(String(100))
     creator_id     = Column(String, ForeignKey("examiners.id"))
@@ -58,10 +78,26 @@ class Exam(Base):
     status         = Column(String(20), default="DRAFT")
     created_at     = Column(DateTime, server_default=func.now())
 
+    tenant    = relationship("Tenant", back_populates="exams")
     creator   = relationship("Examiner", back_populates="exams")
     questions = relationship("Question", back_populates="exam")
     sessions  = relationship("ExamSession", back_populates="exam")
     results   = relationship("Result", back_populates="exam")
+    key_record= relationship("ExamKey", back_populates="exam", uselist=False)
+
+
+class ExamKey(Base):
+    __tablename__ = "exam_keys"
+
+    id              = Column(String, primary_key=True, default=gen_uuid)
+    exam_id         = Column(String, ForeignKey("exams.id"), unique=True, nullable=False)
+    tenant_id       = Column(String, ForeignKey("tenants.id"), default="default")
+    encrypted_key   = Column(Text, nullable=False)
+    key_fingerprint = Column(String(66), nullable=False)
+    status          = Column(String(20), default="ACTIVE")
+    created_at      = Column(DateTime, server_default=func.now())
+
+    exam = relationship("Exam", back_populates="key_record")
 
 
 class Question(Base):
@@ -132,6 +168,9 @@ class Result(Base):
     total_marks  = Column(Integer)
     percentage   = Column(Float)
     is_flagged   = Column(Boolean, default=False)
+    status       = Column(String(20), default="PENDING")
+    reviewed_by  = Column(String, ForeignKey("examiners.id"))
+    review_note  = Column(Text)
     vc_json      = Column(Text)
     vc_hash      = Column(String(66))
     chain_tx_hash= Column(String(66))

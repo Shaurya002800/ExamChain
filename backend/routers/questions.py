@@ -7,8 +7,9 @@ import hashlib, json
 
 from utils.database import get_db
 from utils.auth import get_current_user
-from utils.crypto import encrypt_question, generate_aes_key, get_merkle_proof
-from models.db_models import Question, Exam
+from utils.crypto import encrypt_question, get_merkle_proof
+from utils.key_management import fingerprint_key, generate_exam_key, seal_exam_key
+from models.db_models import Question, Exam, ExamKey
 
 router = APIRouter()
 
@@ -50,12 +51,30 @@ async def upload_questions(
         raise HTTPException(status_code=404, detail="Exam not found")
     if exam.creator_id != user["sub"]:
         raise HTTPException(status_code=403, detail="Not your exam")
+    if exam.tenant_id != user.get("tenant_id", "default"):
+        raise HTTPException(status_code=403, detail="Exam belongs to a different tenant")
 
-    # Generate or use provided AES key
+    # Generate or use a provided pilot key, then escrow it server-side.
     if data.aes_key_hex:
         aes_key = bytes.fromhex(data.aes_key_hex)
     else:
-        aes_key = generate_aes_key()
+        aes_key = generate_exam_key()
+    key_fingerprint = fingerprint_key(aes_key)
+
+    key_result = await db.execute(select(ExamKey).where(ExamKey.exam_id == data.exam_id))
+    key_record = key_result.scalar_one_or_none()
+    if not key_record:
+        key_record = ExamKey(
+            exam_id=data.exam_id,
+            tenant_id=exam.tenant_id or user.get("tenant_id", "default"),
+            encrypted_key=seal_exam_key(aes_key),
+            key_fingerprint=key_fingerprint,
+        )
+        db.add(key_record)
+    else:
+        key_record.encrypted_key = seal_exam_key(aes_key)
+        key_record.key_fingerprint = key_fingerprint
+        key_record.status = "ACTIVE"
 
     uploaded = []
     for q in data.questions:
@@ -108,13 +127,13 @@ async def upload_questions(
 
     await db.commit()
 
-    # Return AES key hex so examiner can store it securely
     return {
         "success":        True,
         "uploaded":       len(uploaded),
-        "aes_key_hex":    aes_key.hex(),
+        "key_fingerprint":key_fingerprint,
+        "key_escrowed":   True,
         "questions":      uploaded,
-        "message":        "Questions encrypted and stored. Save the aes_key_hex securely — you need it to decrypt."
+        "message":        "Questions encrypted and stored. The exam key is escrowed server-side; keep the fingerprint for audit."
     }
 
 
@@ -126,7 +145,10 @@ async def list_questions(
 ):
     """Returns question metadata only (no encrypted data exposed)."""
     result = await db.execute(
-        select(Question).where(Question.exam_id == exam_id)
+        select(Question).join(Exam).where(
+            Question.exam_id == exam_id,
+            Exam.tenant_id == user.get("tenant_id", "default"),
+        )
     )
     questions = result.scalars().all()
     return [

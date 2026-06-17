@@ -3,7 +3,7 @@ import Navbar from "../components/shared/Navbar";
 import IntegrityFeed from "../components/examiner/IntegrityFeed";
 import QuestionUploader from "../components/examiner/QuestionUploader";
 import useStore from "../store/useStore";
-import { registerExaminer, loginExaminer, createExam, uploadQuestions, lockExam, listExams } from "../services/api";
+import { registerExaminer, loginExaminer, createExam, uploadQuestions, lockExam, listExams, getPendingResults, reviewResult } from "../services/api";
 import toast from "react-hot-toast";
 
 export default function ExaminerDashboard() {
@@ -19,7 +19,8 @@ export default function ExaminerDashboard() {
     { text: "", option_a: "", option_b: "", option_c: "", option_d: "", correct: "A", difficulty: 0.5 }
   ]);
   const [selectedExam, setSelectedExam] = useState(null);
-  const [aesKey, setAesKey] = useState("");
+  const [keyFingerprint, setKeyFingerprint] = useState("");
+  const [reviewQueue, setReviewQueue] = useState([]);
 
   const isAuthed = token && role === "examiner";
 
@@ -66,10 +67,39 @@ export default function ExaminerDashboard() {
     setLoading(true);
     try {
       const res = await uploadQuestions({ exam_id: selectedExam, questions });
-      setAesKey(res.data.aes_key_hex);
+      setKeyFingerprint(res.data.key_fingerprint);
       toast.success(`${res.data.uploaded} questions encrypted!`);
       setTab("lock");
     } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
+    setLoading(false);
+  };
+
+  const openReview = async (examId) => {
+    setSelectedExam(examId);
+    setTab("review");
+    setLoading(true);
+    try {
+      const res = await getPendingResults(examId);
+      setReviewQueue(res.data);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not load review queue");
+      setReviewQueue([]);
+    }
+    setLoading(false);
+  };
+
+  const handleReview = async (sessionId, decision) => {
+    setLoading(true);
+    try {
+      await reviewResult(sessionId, {
+        decision,
+        note: decision === "CERTIFY" ? "Reviewed and released by examiner." : "Held for manual integrity investigation.",
+      });
+      toast.success(decision === "CERTIFY" ? "Result certified" : "Result held");
+      await openReview(selectedExam);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Review failed");
+    }
     setLoading(false);
   };
 
@@ -121,7 +151,7 @@ export default function ExaminerDashboard() {
 
         {/* Tab nav */}
         <div style={{ display: "flex", gap: 8, marginBottom: "2rem" }}>
-          {[["dashboard","My Exams"],["create","Create Exam"],["questions","Upload Questions"],["lock","Lock to Chain"]].map(([t, label]) => (
+          {[["dashboard","My Exams"],["create","Create Exam"],["questions","Upload Questions"],["lock","Lock to Chain"],["review","Review Results"]].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: "8px 16px", borderRadius: 7, cursor: "pointer",
               background: tab === t ? "#F59E0B" : "#0D1117",
@@ -159,6 +189,12 @@ export default function ExaminerDashboard() {
                       {exam.merkle_root && (
                         <span style={{ fontFamily: "monospace", fontSize: 10, color: "#334155" }}>{exam.merkle_root.slice(0, 14)}...</span>
                       )}
+                      <button
+                        onClick={() => openReview(exam.exam_id)}
+                        style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid #1E293B", background: "#0A0F1E", color: "#94A3B8", cursor: "pointer", fontSize: 12, fontFamily: "Inter, sans-serif" }}
+                      >
+                        Review
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -227,16 +263,16 @@ export default function ExaminerDashboard() {
         {tab === "lock" && (
           <div style={{ maxWidth: 540 }}>
             <div style={{ fontFamily: "monospace", fontSize: 10, color: "#10B981", letterSpacing: 2, marginBottom: 20 }}>LOCK TO BLOCKCHAIN</div>
-            {aesKey && (
+            {keyFingerprint && (
               <div style={{ background: "#0D1117", border: "1px solid #F59E0B", borderRadius: 10, padding: "1.25rem", marginBottom: "1.5rem" }}>
-                <div style={{ fontFamily: "monospace", fontSize: 10, color: "#F59E0B", marginBottom: 8, letterSpacing: 1 }}>AES KEY — SAVE THIS SECURELY</div>
-                <div style={{ fontFamily: "monospace", fontSize: 11, color: "#10B981", wordBreak: "break-all", lineHeight: 1.7 }}>{aesKey}</div>
-                <div style={{ color: "#475569", fontSize: 11, marginTop: 8 }}>You need this key to decrypt answers after the exam. Store it offline.</div>
+                <div style={{ fontFamily: "monospace", fontSize: 10, color: "#F59E0B", marginBottom: 8, letterSpacing: 1 }}>SERVER KEY ESCROW FINGERPRINT</div>
+                <div style={{ fontFamily: "monospace", fontSize: 11, color: "#10B981", wordBreak: "break-all", lineHeight: 1.7 }}>{keyFingerprint}</div>
+                <div style={{ color: "#475569", fontSize: 11, marginTop: 8 }}>The raw AES key stays encrypted on the backend. This fingerprint is your audit reference.</div>
               </div>
             )}
             <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
               <div style={{ fontWeight: 700, color: "#F1F5F9", marginBottom: 8 }}>What happens when you lock:</div>
-              {["Merkle tree built from all question hashes", "Smart contract called with merkle root + start time", "Paper becomes cryptographically locked until exam start", "Transaction hash written — immutable proof on Ganache"].map((item, i) => (
+              {["Merkle tree built from all question hashes", "Question key remains in encrypted server escrow", "Paper becomes cryptographically locked before release", "Blockchain or local ledger transaction hash becomes immutable proof"].map((item, i) => (
                 <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6 }}>
                   <span style={{ color: "#10B981", fontFamily: "monospace", fontSize: 11 }}>✓</span>
                   <span style={{ color: "#64748B", fontSize: 13 }}>{item}</span>
@@ -246,6 +282,50 @@ export default function ExaminerDashboard() {
             <button onClick={handleLock} disabled={loading} style={{ width: "100%", padding: "13px", borderRadius: 8, border: "none", background: "#10B981", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
               {loading ? "Locking..." : "Lock Exam to Blockchain →"}
             </button>
+          </div>
+        )}
+
+        {tab === "review" && (
+          <div>
+            <div style={{ fontFamily: "monospace", fontSize: 10, color: "#F59E0B", letterSpacing: 2, marginBottom: 8 }}>EXAMINER CERTIFICATION QUEUE</div>
+            {!selectedExam && (
+              <div style={{ marginBottom: "1.5rem" }}>
+                <label style={lbl}>Select Exam</label>
+                <select value="" onChange={e => e.target.value && openReview(e.target.value)} style={{...inp, marginBottom: 0}}>
+                  <option value="">-- select exam --</option>
+                  {exams.map(e => <option key={e.exam_id} value={e.exam_id}>{e.title}</option>)}
+                </select>
+              </div>
+            )}
+            {loading ? (
+              <div style={{ color: "#64748B" }}>Loading review queue...</div>
+            ) : reviewQueue.length === 0 ? (
+              <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 10, padding: "2rem", color: "#64748B" }}>
+                No completed sessions are waiting for review yet.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 12 }}>
+                {reviewQueue.map(item => (
+                  <div key={item.session_id} style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 10, padding: "1.25rem", display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                    <div>
+                      <div style={{ color: "#F1F5F9", fontWeight: 800, marginBottom: 5 }}>{item.student_name}</div>
+                      <div style={{ color: "#475569", fontSize: 12, fontFamily: "monospace" }}>
+                        {item.answers_count} answers · integrity {Math.round((item.integrity_score || 0) * 100)}% · {item.status}
+                      </div>
+                      {item.vc_hash && <div style={{ color: "#334155", fontSize: 11, fontFamily: "monospace", marginTop: 5 }}>{item.vc_hash.slice(0, 24)}...</div>}
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button disabled={loading || item.status === "CERTIFIED"} onClick={() => handleReview(item.session_id, "CERTIFY")} style={{ padding: "9px 13px", borderRadius: 7, border: "none", background: item.status === "CERTIFIED" ? "#1E293B" : "#10B981", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
+                        Certify
+                      </button>
+                      <button disabled={loading || item.status === "HELD"} onClick={() => handleReview(item.session_id, "HOLD")} style={{ padding: "9px 13px", borderRadius: 7, border: "1px solid #7F1D1D", background: "#450A0A", color: "#FCA5A5", fontWeight: 800, cursor: "pointer" }}>
+                        Hold
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
